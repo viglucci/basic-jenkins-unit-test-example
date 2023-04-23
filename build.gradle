@@ -7,6 +7,7 @@
 
 plugins {
     id 'java'
+    id 'groovy'
 }
 
 jar {
@@ -17,10 +18,140 @@ jar {
 
 repositories {
     mavenCentral()
+    maven { url 'https://repo.jenkins-ci.org/public/' }
 }
 
 dependencies {
+    // groovy implementation
+    implementation group: 'org.codehaus.groovy', name: 'groovy', version: '3.0.8'
+    // jenkins implementation
+    implementation group: 'org.jenkins-ci.main', name: 'jenkins-core', version: '2.289.1'
+    
+    // test dependencies
+
+    // junit
     testImplementation group: 'junit', name: 'junit', version: '4.13.2'
+    // jenkins-pipeline-unit
+    testImplementation group: 'com.lesfurets', name: 'jenkins-pipeline-unit', version: '1.2'
+    // spock-core
+    testImplementation group: 'org.spockframework', name: 'spock-core', version: '2.0-groovy-3.0'
+}
+
+sourceSets {
+  main {
+    groovy {
+      srcDirs = ['vars', 'src']
+    }
+  }
+
+  test {
+    groovy {
+      srcDirs = ['test']
+    }
+  }
 }
 
 buildDir = "out"
+
+test {
+    dependsOn cleanTest
+  
+    testLogging.maxGranularity = 0
+  
+    def results = []
+  
+    afterTest { desc, result ->
+        println "${desc.className.split("\\.")[-1]}: " +
+            "${desc.name}: ${result.resultType}"
+    }
+  
+    afterSuite { desc, result ->
+        if (desc.className) { results << result }
+    }
+  
+    doLast {
+        println "Tests: ${results.sum { it.testCount }}" +
+            ", Failures: ${results.sum { it.failedTestCount }}" +
+            ", Errors: ${results.sum { it.exceptions.size() }}" +
+            ", Skipped: ${results.sum { it.skippedTestCount }}"
+    }
+}
+
+tasks.withType(Test) {
+    String ANSI_BOLD_WHITE = "\u001B[0;1m"
+    String ANSI_RESET = "\u001B[0m"
+    String ANSI_BLACK = "\u001B[30m"
+    String ANSI_RED = "\u001B[31m"
+    String ANSI_GREEN = "\u001B[32m"
+    String ANSI_YELLOW = "\u001B[33m"
+    String ANSI_BLUE = "\u001B[34m"
+    String ANSI_PURPLE = "\u001B[35m"
+    String ANSI_CYAN = "\u001B[36m"
+    String ANSI_WHITE = "\u001B[37m"
+    String CHECK_MARK = "\u2713"
+    String NEUTRAL_FACE = "\u0CA0_\u0CA0"
+    String X_MARK = "\u274C"
+  
+    dependsOn cleanTest
+  
+    testLogging {
+        outputs.upToDateWhen {false}
+        lifecycle.events = []
+    }
+  
+    beforeSuite { suite ->
+        if(suite.parent != null && suite.className != null){
+            out.println(ANSI_BOLD_WHITE + suite.name + ANSI_RESET )
+        }
+    }
+    afterTest { descriptor, result ->
+        def indicator = ANSI_WHITE
+  
+        if (result.failedTestCount > 0) {
+            indicator = ANSI_RED + X_MARK
+        } else if (result.skippedTestCount > 0) {
+            indicator = ANSI_YELLOW + NEUTRAL_FACE
+        }
+        else {
+            indicator = ANSI_GREEN + CHECK_MARK
+        }
+  
+        def message = '    ' + indicator + ANSI_RESET + " " + descriptor.name
+        if (result.failedTestCount > 0) {
+            message += ' -> ' + result.exception
+        } else {
+            message += '                            '
+        }
+        out.println(message)
+    }
+  
+    afterSuite { desc, result ->
+        if(desc.parent != null && desc.className != null){
+            out.println("")
+        }
+  
+        if (!desc.parent) { // will match the outermost suite
+            def failStyle = ANSI_RED
+            def skipStyle = ANSI_YELLOW
+            def summaryStyle = ANSI_WHITE
+  
+            switch(result.resultType){
+                case TestResult.ResultType.SUCCESS:
+                    summaryStyle = ANSI_GREEN
+                    break
+                case TestResult.ResultType.FAILURE:
+                    summaryStyle = ANSI_RED
+                    break
+            }
+  
+            out.println( "--------------------------------------------------------------------------")
+            out.println( "Results: " + summaryStyle + "${result.resultType}" + ANSI_RESET
+                + " (${result.testCount} tests, "
+                + ANSI_GREEN + "${result.successfulTestCount} passed" + ANSI_RESET
+                + ", " + failStyle + "${result.failedTestCount} failed" + ANSI_RESET
+                + ", " + skipStyle + "${result.skippedTestCount} skipped" + ANSI_RESET
+                + ")")
+            out.println( "--------------------------------------------------------------------------")
+        }
+    }
+}
