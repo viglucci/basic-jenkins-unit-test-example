@@ -5,11 +5,12 @@
 node() {
   stage('Checkout') {
     // checkout scm
-    // sh 'git clean -xdf'
+    def command = 'git clean -xdf'
+    say(text: command)
+    sh command
   }
 
   stage('Build and test') {
-    // sh './gradlew build'
-    // junit 'build/test-results/test/*.xml'
+    sh './gradlew build'
   }
 }

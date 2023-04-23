@@ -56,7 +56,12 @@ buildDir = "out"
 test {
     dependsOn cleanTest
   
-    testLogging.maxGranularity = 0
+    testLogging {
+        maxGranularity = 0
+        exceptionFormat = 'full'
+        events = ["passed", "failed", "skipped"]
+        showStandardStreams = true
+    }
   
     def results = []
   
@@ -91,7 +96,7 @@ tasks.withType(Test) {
     String CHECK_MARK = "\u2713"
     String NEUTRAL_FACE = "\u0CA0_\u0CA0"
     String X_MARK = "\u274C"
-  
+
     dependsOn cleanTest
   
     testLogging {
@@ -104,9 +109,10 @@ tasks.withType(Test) {
             out.println(ANSI_BOLD_WHITE + suite.name + ANSI_RESET )
         }
     }
+
     afterTest { descriptor, result ->
         def indicator = ANSI_WHITE
-  
+
         if (result.failedTestCount > 0) {
             indicator = ANSI_RED + X_MARK
         } else if (result.skippedTestCount > 0) {
@@ -115,7 +121,7 @@ tasks.withType(Test) {
         else {
             indicator = ANSI_GREEN + CHECK_MARK
         }
-  
+
         def message = '    ' + indicator + ANSI_RESET + " " + descriptor.name
         if (result.failedTestCount > 0) {
             message += ' -> ' + result.exception
@@ -124,17 +130,17 @@ tasks.withType(Test) {
         }
         out.println(message)
     }
-  
+
     afterSuite { desc, result ->
         if(desc.parent != null && desc.className != null){
             out.println("")
         }
-  
+
         if (!desc.parent) { // will match the outermost suite
             def failStyle = ANSI_RED
             def skipStyle = ANSI_YELLOW
             def summaryStyle = ANSI_WHITE
-  
+
             switch(result.resultType){
                 case TestResult.ResultType.SUCCESS:
                     summaryStyle = ANSI_GREEN
@@ -143,7 +149,7 @@ tasks.withType(Test) {
                     summaryStyle = ANSI_RED
                     break
             }
-  
+
             out.println( "--------------------------------------------------------------------------")
             out.println( "Results: " + summaryStyle + "${result.resultType}" + ANSI_RESET
                 + " (${result.testCount} tests, "
